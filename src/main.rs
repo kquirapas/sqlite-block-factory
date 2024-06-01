@@ -1,48 +1,23 @@
 use anyhow::Result;
-use axum::{
-    response::{Html, IntoResponse},
-    routing::get,
-    Router,
+use axum::Router;
+use clap::{
+    builder::{EnumValueParser, RangedU64ValueParser},
+    Arg, Command,
 };
-use clap::{value_parser, Arg, Command, ValueEnum};
-use comfy_table::{presets::UTF8_FULL, *};
-use sha256::digest;
-use std::hash;
-use tokio::time;
+use std::sync::Arc;
+use tokio::sync::Mutex;
 
+mod blockchain;
+mod config;
+mod errors;
+mod persistence;
 mod router;
-use router::{api, ui};
-
 mod service;
+mod utils;
 
-#[derive(Clone, Debug, ValueEnum)]
-enum Mode {
-    Full,
-    FactoryOnly,
-    QueryOnly,
-}
-
-struct Configuration {
-    port: String,
-    block_time: u32,
-}
-
-struct Transaction<'a> {
-    from: String,
-    to: String,
-    instruction: &'a [u8],
-}
-
-struct Block {
-    transactions: Vec<String>,
-    prev_block_hash: String,
-    timestamp: u32,
-    nonce: u32,
-}
-
-struct Node<'a> {
-    transaction_pool: Vec<Transaction<'a>>,
-}
+use blockchain::Node;
+use config::{Configuration, Mode};
+use router::{api, ui};
 
 async fn process_tx_pool() -> Result<()> {
     // let duration = time::Duration::from_secs(u32)
@@ -61,14 +36,14 @@ async fn main() -> Result<()> {
                 .help("Port to use in serving the factory")
                 .long("port")
                 .short('p')
-                .value_parser(value_parser!(u32).range(1..))
+                .value_parser(RangedU64ValueParser::<u32>::new().range(1..))
                 .default_value("8080"),
         )
         .arg(
             Arg::new("BLOCKTIME")
                 .help("Amount of seconds to wait before creating a block")
                 .long("block-time")
-                .value_parser(value_parser!(u32).range(1..))
+                .value_parser(RangedU64ValueParser::<u32>::new().range(1..))
                 .default_value("1"),
         )
         .arg(
@@ -76,7 +51,7 @@ async fn main() -> Result<()> {
                 .help("Mode for block factory")
                 .long("mode")
                 .short('m')
-                .value_parser(value_parser!(Mode))
+                .value_parser(EnumValueParser::<Mode>::new())
                 .default_value("full"),
         )
         .get_matches();
@@ -86,46 +61,27 @@ async fn main() -> Result<()> {
     let block_time = matches.get_one::<u32>("BLOCKTIME").unwrap();
     let mode = matches.get_one::<Mode>("MODE").unwrap();
 
-    // display configuration
-    let mut table = Table::new();
-    // resolve temporary borrow error
-    let table = table
-        .load_preset(UTF8_FULL)
-        .set_content_arrangement(ContentArrangement::Dynamic)
-        .set_width(80)
-        .set_header(vec![
-            Cell::new("Configuration").add_attribute(Attribute::Bold)
-        ])
-        .set_header(vec![
-            Cell::new("Name").add_attribute(Attribute::Bold),
-            Cell::new("Value").add_attribute(Attribute::Bold),
-        ]);
+    // store in config struct
+    let shared_config = Arc::new(Mutex::new(Configuration {
+        port: port.to_owned(),
+        block_time: block_time.to_owned(),
+        mode: mode.to_owned(),
+        node: Node::new(),
+    }));
 
-    table.add_row(vec![Cell::new("Port"), Cell::new(port)]);
-    table.add_row(vec![Cell::new("Block Time"), Cell::new(block_time)]);
-    table.add_row(vec![
-        Cell::new("Mode"),
-        Cell::new(match mode {
-            Mode::Full => "Full",
-            Mode::FactoryOnly => "Factory Only",
-            Mode::QueryOnly => "Query Only",
-        }),
-    ]);
-
-    println!("{table}");
+    // display config with beautiful table
+    utils::display_configuration(port, block_time, mode);
 
     // get routes
     let app = Router::new()
-        // service to come before the ui routes
+        // serve static files from /assets
         .merge(service::service()?)
-        .merge(api::router()?)
+        .merge(api::router(shared_config.clone())?)
         .merge(ui::router()?);
 
-    // run our app with hyper, listening globally on port 3000
-    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{port}"))
-        .await
-        .unwrap();
-    axum::serve(listener, app).await.unwrap();
+    // run our app with hyper, listening globally on {--port}
+    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{port}")).await?;
+    axum::serve(listener, app).await?;
 
     Ok(())
 }
