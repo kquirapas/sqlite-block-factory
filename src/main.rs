@@ -1,7 +1,7 @@
-use anyhow::{Context, Result};
-use askama::Template;
-use axum::{routing::get, Router};
+use anyhow::Result;
+use axum::Router;
 use clap::{value_parser, Arg, Command, ValueEnum};
+use comfy_table::{presets::UTF8_FULL, *};
 use sha256::digest;
 use std::hash;
 use tokio::time;
@@ -12,8 +12,8 @@ use router::{api, ui};
 #[derive(Clone, Debug, ValueEnum)]
 enum Mode {
     Full,
-    Generation,
-    Query,
+    FactoryOnly,
+    QueryOnly,
 }
 
 struct Configuration {
@@ -37,10 +37,6 @@ struct Block {
 struct Node<'a> {
     transaction_pool: Vec<Transaction<'a>>,
 }
-
-#[derive(Template)]
-#[template(path = "index.html")]
-struct IndexTemplate {}
 
 async fn process_tx_pool() -> Result<()> {
     // let duration = time::Duration::from_secs(u32)
@@ -84,11 +80,33 @@ async fn main() -> Result<()> {
     let block_time = matches.get_one::<u32>("BLOCKTIME").unwrap();
     let mode = matches.get_one::<Mode>("MODE").unwrap();
 
-    println!("----- Configuration -----");
-    println!("PORT: {}", port);
-    println!("BLOCK TIME: {}", block_time);
-    println!("MODE: {:?}", mode);
-    println!("-------------------------");
+    // display configuration
+    let mut table = Table::new();
+    // resolve temporary borrow error
+    let table = table
+        .load_preset(UTF8_FULL)
+        .set_content_arrangement(ContentArrangement::Dynamic)
+        .set_width(80)
+        .set_header(vec![
+            Cell::new("Configuration").add_attribute(Attribute::Bold)
+        ])
+        .set_header(vec![
+            Cell::new("Name").add_attribute(Attribute::Bold),
+            Cell::new("Value").add_attribute(Attribute::Bold),
+        ]);
+
+    table.add_row(vec![Cell::new("Port"), Cell::new(port)]);
+    table.add_row(vec![Cell::new("Block Time"), Cell::new(block_time)]);
+    table.add_row(vec![
+        Cell::new("Mode"),
+        Cell::new(match mode {
+            Mode::Full => "Full",
+            Mode::FactoryOnly => "Factory Only",
+            Mode::QueryOnly => "Query Only",
+        }),
+    ]);
+
+    println!("{table}");
 
     // get routes
     let app = Router::new().merge(api::router()?).merge(ui::router()?);

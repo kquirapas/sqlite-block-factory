@@ -1,4 +1,5 @@
 use anyhow::Result;
+use askama::Template;
 use axum::{
     http::StatusCode,
     response::IntoResponse,
@@ -7,6 +8,10 @@ use axum::{
     Router,
 };
 use serde_json::{json, Value};
+
+#[derive(Template)]
+#[template(path = "index.html")]
+struct IndexTemplate {}
 
 pub fn router() -> Result<Router> {
     // /transaction
