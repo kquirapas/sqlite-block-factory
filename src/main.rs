@@ -79,6 +79,9 @@ async fn main() -> Result<()> {
         .merge(api::router(shared_config.clone())?)
         .merge(ui::router()?);
 
+    // add global 404
+    let app = app.fallback(ui::not_found);
+
     // run our app with hyper, listening globally on {--port}
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{port}")).await?;
     axum::serve(listener, app).await?;

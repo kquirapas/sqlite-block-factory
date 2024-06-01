@@ -23,8 +23,8 @@ pub fn router(shared_config: Arc<Mutex<Configuration>>) -> Result<Router> {
     let api_routes = Router::new()
         // /api/hello
         .route("/hello", get(hello_world))
-        .route("/transaction", put(transaction));
-    // .route("/transaction/pool", get(tx_pool));
+        .route("/transaction", put(transaction))
+        .route("/transaction/pool", get(tx_pool));
 
     let api_group = Router::new()
         .nest("/api", api_routes)
@@ -49,8 +49,8 @@ async fn transaction(
     let tx = payload;
     let config = Arc::clone(&config);
 
-    let mut configuration = config.lock().await;
-    configuration.node.tx_pool.push(tx);
+    let mut config = config.lock().await;
+    config.node.tx_pool.push(tx);
 
     Json(json!({
         "message": "successfully added transaction to pool",
@@ -59,11 +59,12 @@ async fn transaction(
 }
 
 // GET /transaction/pool
-// async fn tx_pool(State(config): State<Arc<Mutex<Configuration>>>) -> Json<Value> {
-//     let config = Arc::clone(&config);
-//
-//     Json(json!({
-//         "data": config.node,
-//         "status": "OK",
-//     }))
-// }
+async fn tx_pool(State(config): State<Arc<Mutex<Configuration>>>) -> Json<Value> {
+    let config = Arc::clone(&config);
+    let config = config.lock().await;
+
+    Json(json!({
+        "data": config.node.tx_pool,
+        "status": "OK",
+    }))
+}

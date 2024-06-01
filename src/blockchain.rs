@@ -1,10 +1,10 @@
 use anyhow::Result;
 // use sha256::digest;
 // use std::hash;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use tokio::time;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Transaction {
     pub from: String,
     pub to: String,
@@ -16,6 +16,7 @@ pub struct Block {
     pub transactions: Vec<String>,
 }
 
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Node {
     pub tx_pool: Vec<Transaction>,
 }

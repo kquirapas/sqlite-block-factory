@@ -13,6 +13,10 @@ use axum::{
 #[template(path = "index.html")]
 struct IndexTemplate {}
 
+#[derive(Template)]
+#[template(path = "404.html")]
+struct NotFoundTemplate {}
+
 pub fn router() -> Result<Router> {
     let ui_routes = Router::new()
         // / -> block-explorer
@@ -24,6 +28,12 @@ pub fn router() -> Result<Router> {
 }
 
 //---- HANDLERS -----
+
+// global 404 (not found)
+pub async fn not_found() -> impl IntoResponse {
+    let template = NotFoundTemplate {};
+    HtmlTemplate(template)
+}
 
 // get block explorer
 async fn block_explorer() -> impl IntoResponse {

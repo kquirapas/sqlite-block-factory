@@ -14,6 +14,6 @@ do
 		   "from": "'$RAND_FROM'",
 		   "to": "'$RAND_TO'",
 		   "instruction": "'$RAND_INSTRUCTION'"
-		}
-	}'
+		 }'
+	echo
 done
