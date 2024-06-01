@@ -1,25 +1,19 @@
 use anyhow::Result;
+
 use askama::Template;
+
 use axum::{
     http::StatusCode,
-    response::IntoResponse,
-    response::{Html, Json},
+    response::{Html, IntoResponse, Response},
     routing::get,
     Router,
 };
-use serde_json::{json, Value};
 
 #[derive(Template)]
 #[template(path = "index.html")]
 struct IndexTemplate {}
 
 pub fn router() -> Result<Router> {
-    // /transaction
-    // /blocks (with paging and search)
-    // /transaction/block/:blockHash (with paging and search)
-    // /transaction/hash/:hash
-    // /block/hash/:hash
-    // /block/height/:height
     let ui_routes = Router::new()
         // / -> block-explorer
         .route("/", get(block_explorer));
@@ -29,7 +23,30 @@ pub fn router() -> Result<Router> {
     Ok(ui_group)
 }
 
+//---- HANDLERS -----
+
 // get block explorer
-async fn block_explorer() -> Html<&'static str> {
-    Html("<main><h1>blockchain explorer</main></h1>")
+async fn block_explorer() -> impl IntoResponse {
+    let template = IndexTemplate {};
+    HtmlTemplate(template)
+}
+
+//---- ASKAMA TEMPLATING -----
+
+struct HtmlTemplate<T>(T);
+
+impl<T> IntoResponse for HtmlTemplate<T>
+where
+    T: Template,
+{
+    fn into_response(self) -> Response {
+        match self.0.render() {
+            Ok(html) => Html(html).into_response(),
+            Err(err) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to render template. Error: {}", err),
+            )
+                .into_response(),
+        }
+    }
 }

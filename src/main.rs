@@ -1,5 +1,9 @@
 use anyhow::Result;
-use axum::Router;
+use axum::{
+    response::{Html, IntoResponse},
+    routing::get,
+    Router,
+};
 use clap::{value_parser, Arg, Command, ValueEnum};
 use comfy_table::{presets::UTF8_FULL, *};
 use sha256::digest;
@@ -8,6 +12,8 @@ use tokio::time;
 
 mod router;
 use router::{api, ui};
+
+mod service;
 
 #[derive(Clone, Debug, ValueEnum)]
 enum Mode {
@@ -109,7 +115,11 @@ async fn main() -> Result<()> {
     println!("{table}");
 
     // get routes
-    let app = Router::new().merge(api::router()?).merge(ui::router()?);
+    let app = Router::new()
+        // service to come before the ui routes
+        .merge(service::service()?)
+        .merge(api::router()?)
+        .merge(ui::router()?);
 
     // run our app with hyper, listening globally on port 3000
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{port}"))
