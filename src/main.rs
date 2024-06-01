@@ -27,7 +27,6 @@ async fn process_tx_pool() -> Result<()> {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    // requires `cargo` feature, reading name, version, author, and description from `Cargo.toml`
     let matches = Command::new("block-factory")
         .version("0.1.0")
         .about("Generate blocks from incoming transactions")
