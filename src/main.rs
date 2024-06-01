@@ -83,6 +83,8 @@ async fn main() -> Result<()> {
 
     // run our app with hyper, listening globally on {--port}
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{port}")).await?;
+
+    // serve block factory
     axum::serve(listener, app).await?;
 
     Ok(())

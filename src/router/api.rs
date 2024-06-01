@@ -14,7 +14,6 @@ use tokio::sync::Mutex;
 use crate::config::Configuration;
 
 pub fn router(shared_config: Arc<Mutex<Configuration>>) -> Result<Router> {
-    // /api/transaction
     // /api/blocks (with paging and search)
     // /api/transaction/block/:blockHash (with paging and search)
     // /api/transaction/hash/:hash
