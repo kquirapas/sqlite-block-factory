@@ -26,7 +26,12 @@ impl Node {
         Self { tx_pool: vec![] }
     }
 
-    pub async fn run(&mut self) -> Result<()> {
+    pub async fn run(&self, block_time: u32) -> Result<()> {
+        let mut interval = time::interval(time::Duration::from_secs(block_time as u64));
+        loop {
+            interval.tick().await;
+            println!("ticked");
+        }
         Ok(())
     }
 }

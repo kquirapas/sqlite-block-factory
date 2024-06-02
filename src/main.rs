@@ -57,7 +57,7 @@ async fn main() -> Result<()> {
 
     // parse arguments and flags
     let port = matches.get_one::<u32>("PORT").unwrap();
-    let block_time = matches.get_one::<u32>("BLOCKTIME").unwrap();
+    let block_time = *matches.get_one::<u32>("BLOCKTIME").unwrap();
     let mode = matches.get_one::<Mode>("MODE").unwrap();
 
     // store in config struct
@@ -69,7 +69,14 @@ async fn main() -> Result<()> {
     }));
 
     // display config with beautiful table
-    utils::display_configuration(port, block_time, mode);
+    utils::display_configuration(port, &block_time, mode);
+
+    let config = Arc::clone(&shared_config);
+    let node_handle = tokio::spawn(async move {
+        // run the node
+        let config = config.lock().await;
+        config.node.run(block_time.to_owned()).await
+    });
 
     // get routes
     let app = Router::new()
