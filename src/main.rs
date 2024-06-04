@@ -61,12 +61,12 @@ async fn main() -> Result<()> {
     let mode = matches.get_one::<Mode>("MODE").unwrap();
 
     // store in config struct
-    let shared_config = Arc::new(Mutex::new(Configuration {
+    let shared_config = Arc::new(Configuration {
         port: port.to_owned(),
         block_time: block_time.to_owned(),
         mode: mode.to_owned(),
         node: Node::new(),
-    }));
+    });
 
     // display config with beautiful table
     utils::display_configuration(&port, &block_time, mode);
@@ -78,7 +78,7 @@ async fn main() -> Result<()> {
         // get ownership of BLOCK TIME
         let owned_block_time = block_time.to_owned();
         // run the node
-        let config = config.lock().await;
+        let config = config;
         config.node.run(owned_block_time).await
     });
 

@@ -13,7 +13,7 @@ use tokio::sync::Mutex;
 
 use crate::config::Configuration;
 
-pub fn router(shared_config: Arc<Mutex<Configuration>>) -> Result<Router> {
+pub fn router(shared_config: Arc<Configuration>) -> Result<Router> {
     // /api/blocks (with paging and search)
     // /api/transaction/block/:blockHash (with paging and search)
     // /api/transaction/hash/:hash
@@ -42,14 +42,15 @@ async fn hello_world() -> Json<Value> {
 
 // PUT /transaction
 async fn transaction(
-    State(config): State<Arc<Mutex<Configuration>>>,
+    State(config): State<Arc<Configuration>>,
     Json(payload): Json<Transaction>,
 ) -> Json<Value> {
-    let tx = payload;
     let config = Arc::clone(&config);
+    let tx = payload;
+    let pool_arc = Arc::clone(&config.node.tx_pool);
 
-    let mut config = config.lock().await;
-    config.node.tx_pool.push(tx);
+    let mut pool = pool_arc.lock().await;
+    pool.push(tx);
 
     Json(json!({
         "message": "successfully added transaction to pool",
@@ -58,12 +59,14 @@ async fn transaction(
 }
 
 // GET /transaction/pool
-async fn tx_pool(State(config): State<Arc<Mutex<Configuration>>>) -> Json<Value> {
+async fn tx_pool(State(config): State<Arc<Configuration>>) -> Json<Value> {
     let config = Arc::clone(&config);
-    let config = config.lock().await;
+    let pool_arc = Arc::clone(&config.node.tx_pool);
+
+    let pool = pool_arc.lock().await;
 
     Json(json!({
-        "data": config.node.tx_pool,
+        "data": *pool,
         "status": "OK",
     }))
 }
