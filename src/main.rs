@@ -5,7 +5,6 @@ use clap::{
     Arg, Command,
 };
 use std::sync::Arc;
-use tokio::sync::Mutex;
 
 mod blockchain;
 mod config;
@@ -15,15 +14,9 @@ mod router;
 mod service;
 mod utils;
 
-use blockchain::Node;
+use blockchain::{Chain, Node};
 use config::{Configuration, Mode};
 use router::{api, ui};
-
-async fn process_tx_pool() -> Result<()> {
-    // let duration = time::Duration::from_secs(u32)
-    //
-    Ok(())
-}
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -42,6 +35,7 @@ async fn main() -> Result<()> {
             Arg::new("BLOCKTIME")
                 .help("Amount of seconds to wait before creating a block")
                 .long("block-time")
+                .short('b')
                 .value_parser(RangedU64ValueParser::<u32>::new().range(1..))
                 .default_value("1"),
         )
@@ -65,31 +59,34 @@ async fn main() -> Result<()> {
         port: port.to_owned(),
         block_time: block_time.to_owned(),
         mode: mode.to_owned(),
-        node: Node::new(),
+        chain: Chain::new(),
     });
 
     // display config with beautiful table
     utils::display_configuration(&port, &block_time, mode);
 
-    // run the node in a task
+    // run the Chain in a task with Node runner
     let config = Arc::clone(&shared_config);
-    let node_handle = tokio::spawn(async move {
+    let chain_handle = tokio::spawn(async move {
         println!("Spawning node runner...");
         // get ownership of BLOCK TIME
         let owned_block_time = block_time.to_owned();
         // run the node
         let config = config;
-        config.node.run(owned_block_time).await
+        let node = Node::new().await?;
+        node.run(&config.chain, owned_block_time).await
     });
 
-    // get routes
+    // get routes and merge under one App route
     let app = Router::new()
-        // serve static files from /assets
+        // route /assets (serve static files from /assets)
         .merge(service::service()?)
+        // route /api/
         .merge(api::router(shared_config.clone())?)
+        // route / (for rendering templates)
         .merge(ui::router()?);
 
-    // add global 404
+    // add global 404 page
     let app = app.fallback(ui::not_found);
 
     // serve block factory in a task
@@ -103,7 +100,7 @@ async fn main() -> Result<()> {
         axum::serve(listener, app).await
     });
 
-    node_handle.await??;
+    chain_handle.await??;
     server_handle.await??;
 
     Ok(())

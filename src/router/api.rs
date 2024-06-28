@@ -9,10 +9,10 @@ use axum::{
 };
 use serde_json::{json, Value};
 use std::sync::Arc;
-use tokio::sync::Mutex;
 
 use crate::config::Configuration;
 
+// [kristian] TODO: standardize response objects
 pub fn router(shared_config: Arc<Configuration>) -> Result<Router> {
     // /api/blocks (with paging and search)
     // /api/transaction/block/:blockHash (with paging and search)
@@ -20,9 +20,11 @@ pub fn router(shared_config: Arc<Configuration>) -> Result<Router> {
     // /api/block/hash/:hash
     // /api/block/height/:height
     let api_routes = Router::new()
-        // /api/hello
+        // GET /api/hello
         .route("/hello", get(hello_world))
+        // PUT /api/transaction
         .route("/transaction", put(transaction))
+        // GET /api/transaction/pool
         .route("/transaction/pool", get(tx_pool));
 
     let api_group = Router::new()
@@ -47,7 +49,7 @@ async fn transaction(
 ) -> Json<Value> {
     let config = Arc::clone(&config);
     let tx = payload;
-    let pool_arc = Arc::clone(&config.node.tx_pool);
+    let pool_arc = Arc::clone(&config.chain.tx_pool);
 
     let mut pool = pool_arc.lock().await;
     pool.push(tx);
@@ -61,7 +63,7 @@ async fn transaction(
 // GET /transaction/pool
 async fn tx_pool(State(config): State<Arc<Configuration>>) -> Json<Value> {
     let config = Arc::clone(&config);
-    let pool_arc = Arc::clone(&config.node.tx_pool);
+    let pool_arc = Arc::clone(&config.chain.tx_pool);
 
     let pool = pool_arc.lock().await;
 
