@@ -34,7 +34,5 @@ fn main() -> Result<()> {
             db_name, db_folder
         );
     }
-    panic!("end panic");
-
     Ok(())
 }
