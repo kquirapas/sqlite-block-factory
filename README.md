@@ -9,15 +9,29 @@ Generating consensus-less blocks from incoming transactions
 
 # Objects
 
-- `Transaction` - Basic unit of interaction
+## `Transaction`
 
-- `Block` - Data structure for storing transactions
+- Basic unit of interaction with Node
+- Hold transaction details
 
-- `Chain` - Data structure for managing blocks
+## `Block`
 
-- `Node` - Data structure for managing the node (request handling, persistence)
+- Structure for immutably storing transactions
 
-- `Persistence` - The gateway to database I/O
+## `Chain`
+
+- Manage block creation and chaining
+
+## `Node`
+
+- Run the block factory
+- Handle data persistency
+
+## `Persistence`
+
+- Gateway to database I/O
+- Abstract database implementation
+- Allow different Database services (e.g. sqlite, postgres)
 
 # Configuration Flags
 
