@@ -1,5 +1,7 @@
 # sqlite block factory
 
+![Block Factory Architecture Diagram](./github/block-factory-diagram.png)
+
 - [x] Concurrent (with tokio)
 - [ ] Observable (with tracing)
 
@@ -14,6 +16,8 @@ Generating consensus-less blocks from incoming transactions
 - `Chain` - Data structure for managing blocks
 
 - `Node` - Data structure for managing the node (request handling, persistence)
+
+- `Persistence` - The gateway to database I/O
 
 # Configuration Flags
 
