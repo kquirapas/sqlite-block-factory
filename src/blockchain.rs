@@ -109,6 +109,9 @@ impl Node {
 
             // create new block
             let block = chain.create_block_from_pool().await?;
+
+            println!("{:?}", block);
+
             // store_block
         }
         // Ok(())

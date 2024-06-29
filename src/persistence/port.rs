@@ -16,6 +16,7 @@ pub struct TransactionData<'a> {
     pub instruction: &'a [u8],
 }
 
+#[derive(sqlx::FromRow)]
 pub struct BlockData {
     pub uuid: String,
     pub hash: String,
@@ -31,7 +32,7 @@ pub struct BlockData {
 pub trait NodePersistency {
     /// Store [`BlockData`] into local DB
     async fn read_latest_block_data(&self) -> Result<BlockData>;
-    async fn create_block_data(&self, block_data: BlockData) -> Result<()>;
+    // async fn create_block_data(&self, block_data: BlockData) -> Result<()>;
 }
 
 /// Manages and maintains persistence data
@@ -80,26 +81,27 @@ impl Persistence {
 
 impl NodePersistency for Persistence {
     async fn read_latest_block_data(&self) -> Result<BlockData> {
-        let block_data =
-            sqlx::query!("SELECT prev_block_hash FROM block_data ORDER BY block_timestamp desc")
+        let block_data: BlockData =
+            sqlx::query_as("SELECT prev_block_hash FROM block_data ORDER BY block_timestamp desc")
                 .fetch_one(&self.pool)
                 .await?;
+
         Ok(block_data)
     }
 
-    async fn create_block_data(&self, block_data: BlockData) -> Result<()> {
-        sqlx::query(
-            "INSERT INTO block_data (id, hash, block_timestamp, height, prev_block_hash, nonce) VALUES ($1, $2, $3, $4, $5, $6)",
-        )
-        .bind(block_data.uuid)
-        .bind(block_data.hash)
-        .bind(block_data.timestamp)
-        .bind(block_data.height)
-        .bind(block_data.prev_block_hash)
-        .bind(block_data.nonce)
-        .execute(&self.pool)
-        .await?;
-
-        Ok(())
-    }
+    // async fn create_block_data(&self, block_data: BlockData) -> Result<()> {
+    //     sqlx::query(
+    //         "INSERT INTO block_data (id, hash, block_timestamp, height, prev_block_hash, nonce) VALUES ($1, $2, $3, $4, $5, $6)",
+    //     )
+    //     .bind(block_data.uuid)
+    //     .bind(block_data.hash)
+    //     .bind(block_data.timestamp)
+    //     .bind(block_data.height)
+    //     .bind(block_data.prev_block_hash)
+    //     .bind(block_data.nonce)
+    //     .execute(&self.pool)
+    //     .await?;
+    //
+    //     Ok(())
+    // }
 }
