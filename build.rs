@@ -14,6 +14,7 @@ fn main() -> Result<()> {
     // create DB folder in root if it doesn't yet exist
     if let Err(err) = create_dir(&db_folder) {
         if err.kind() != ErrorKind::AlreadyExists {
+            // panic because it's not a file exists error
             panic!("{}", err);
         }
         // else skipping...
@@ -26,6 +27,7 @@ fn main() -> Result<()> {
     // create DB file in db/ folder
     if let Err(err) = File::create_new(format!("{}/{}", db_folder, db_name)) {
         if err.kind() != ErrorKind::AlreadyExists {
+            // panic because it's not a file exists error
             panic!("{}", err);
         }
         // else skipping...
