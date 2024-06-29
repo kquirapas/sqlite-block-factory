@@ -1,4 +1,6 @@
+use anyhow::Result;
 use comfy_table::{presets::UTF8_FULL, *};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::config::Mode;
 
@@ -31,3 +33,11 @@ pub fn display_configuration(port: &u32, block_time: &u32, mode: &Mode) {
 
     println!("{table}");
 }
+
+pub fn get_unix_timestamp_now() -> Result<u64> {
+    let duration = SystemTime::now().duration_since(UNIX_EPOCH)?;
+    let unix_timestamp = duration.as_secs();
+    Ok(unix_timestamp)
+}
+
+// pub fn get_random_nonce()

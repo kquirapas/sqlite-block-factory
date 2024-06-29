@@ -8,7 +8,7 @@ use std::sync::Arc;
 
 mod blockchain;
 mod config;
-mod errors;
+mod error;
 mod persistence;
 mod router;
 mod service;

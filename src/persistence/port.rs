@@ -1,44 +1,55 @@
-use anyhow::Result;
+use anyhow::{bail, Result};
+use sha256::digest;
 use sqlx::{Pool, Row, Sqlite, SqlitePool};
 use std::env;
-// use sha256::digest;
-// use std::hash;
+use uuid::Uuid;
 // use tokio::time;
+
+use crate::blockchain::Block;
+use crate::error::BlockFactoryError;
+use crate::utils::get_unix_timestamp_now;
 
 //----- MODELS -----
 
 pub struct TransactionData<'a> {
+    // uuidv7 with timestamp
     pub uuid: String,
     pub hash: String,
-    pub timestamp: u32,
     pub from: String,
     pub to: String,
     pub instruction: &'a [u8],
 }
 
-#[derive(sqlx::FromRow)]
+#[derive(Debug, sqlx::FromRow)]
 pub struct BlockData {
+    // uuidv7 with timestamp
     pub uuid: String,
     pub hash: String,
-    /// specific time block was persisted into local DB
-    /// in Unix timestamp
-    pub timestamp: u32,
     pub nonce: u32,
     pub height: u32,
     pub prev_block_hash: String,
 }
 
-/// Trait for handling Node persistency
-pub trait NodePersistency {
-    /// Store [`BlockData`] into local DB
-    async fn read_latest_block_data(&self) -> Result<BlockData>;
-    // async fn create_block_data(&self, block_data: BlockData) -> Result<()>;
+impl BlockData {
+    fn get_sha256_hash(uuid: String, nonce: u32, height: u32, prev_block_hash: String) -> String {
+        digest(format!("{uuid}{nonce}{height}{prev_block_hash}"))
+    }
 }
 
+// convert Block into BlockData with automated necessary values
+// impl From<Block> for BlockData {
+//     fn from() -> BlockData {
+//         let uuid = Uuid::now_v7();
+//         BlockData {}
+//     }
+// }
+
+// TODO: Make this support multiple DB services
 /// Manages and maintains persistence data
 /// and operations
 pub struct Persistence {
-    pool: Pool<Sqlite>,
+    // only SQLite for now
+    pool: SqlitePool,
 }
 
 impl Persistence {
@@ -51,6 +62,7 @@ impl Persistence {
 
         // [kristian] TODO: configure optimal connection pooling options
         // create a connection pool
+        // only SQLite for now
         let pool = SqlitePool::connect(db_url.as_str()).await?;
         // auto migrate tables
         sqlx::migrate!("./migrations").run(&pool).await?;
@@ -79,29 +91,39 @@ impl Persistence {
 // 	primary key (id)
 // );
 
+/// Trait for handling Node persistency
+pub trait NodePersistency {
+    /// Store [`BlockData`] into local DB
+    async fn read_latest_block_data(&self) -> Result<BlockData>;
+    /// Store [`BlockData`] into local DB
+    async fn create_block_data(&self, block_data: BlockData) -> Result<()>;
+}
+
 impl NodePersistency for Persistence {
     async fn read_latest_block_data(&self) -> Result<BlockData> {
-        let block_data: BlockData =
+        let option_block_data: Option<BlockData> =
             sqlx::query_as("SELECT prev_block_hash FROM block_data ORDER BY block_timestamp desc")
-                .fetch_one(&self.pool)
+                .fetch_optional(&self.pool)
                 .await?;
 
-        Ok(block_data)
+        match option_block_data {
+            Some(block_data) => Ok(block_data),
+            None => bail!(BlockFactoryError::MissingGenesis),
+        }
     }
 
-    // async fn create_block_data(&self, block_data: BlockData) -> Result<()> {
-    //     sqlx::query(
-    //         "INSERT INTO block_data (id, hash, block_timestamp, height, prev_block_hash, nonce) VALUES ($1, $2, $3, $4, $5, $6)",
-    //     )
-    //     .bind(block_data.uuid)
-    //     .bind(block_data.hash)
-    //     .bind(block_data.timestamp)
-    //     .bind(block_data.height)
-    //     .bind(block_data.prev_block_hash)
-    //     .bind(block_data.nonce)
-    //     .execute(&self.pool)
-    //     .await?;
-    //
-    //     Ok(())
-    // }
+    async fn create_block_data(&self, block_data: BlockData) -> Result<()> {
+        sqlx::query(
+            "INSERT INTO block_data (id, hash, block_timestamp, height, prev_block_hash, nonce) VALUES ($1, $2, $3, $4, $5, $6)",
+        )
+        .bind(block_data.uuid)
+        .bind(block_data.hash)
+        .bind(block_data.height)
+        .bind(block_data.prev_block_hash)
+        .bind(block_data.nonce)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
 }

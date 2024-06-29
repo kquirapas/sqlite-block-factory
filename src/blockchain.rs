@@ -1,14 +1,10 @@
 use anyhow::Result;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
-// use sha256::digest;
-// use std::hash;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::time;
-use uuid::Uuid;
 
-use crate::persistence::{BlockData, Persistence};
+use crate::persistence::{BlockData, NodePersistency, Persistence};
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Transaction {
@@ -24,10 +20,19 @@ pub struct Block {
 }
 
 impl Block {
-    pub fn new(tx_pool: Vec<Transaction>) -> Self {
-        // [kristian] TODO: Ensure genesis block is created
+    pub fn from(tx_pool: Vec<Transaction>) -> Self {
         Self {
             transactions: tx_pool,
+        }
+    }
+
+    pub fn get_genesis() -> Self {
+        Self {
+            transactions: vec![Transaction {
+                from: String::from("Foundation"),
+                to: String::from("Earth"),
+                instruction: "LET'S FUCKING GOOOO!!!!".as_bytes().to_vec(),
+            }],
         }
     }
 }
@@ -70,7 +75,7 @@ impl Chain {
     pub async fn create_block_from_pool(&self) -> Result<Block> {
         let arc_mutex_pool: Arc<Mutex<Vec<Transaction>>> = Arc::clone(&self.tx_pool);
         let mut pool = arc_mutex_pool.lock().await;
-        let block = Block::new(pool.to_vec());
+        let block = Block::from(pool.to_vec());
         // clear tx pool
         *pool = vec![];
         Ok(block)
@@ -86,6 +91,11 @@ impl Node {
         Ok(Self {
             persistence: Persistence::new().await?,
         })
+    }
+
+    pub async fn create_genesis(&self) -> Result<BlockData> {
+        let block_data = Block::get_genesis();
+        self.persistence.create_block_data(block_data)
     }
 
     // chain runner
@@ -113,6 +123,7 @@ impl Node {
             println!("{:?}", block);
 
             // store_block
+            self.store_block(block).await?;
         }
         // Ok(())
     }
@@ -124,7 +135,9 @@ impl Node {
     }
 
     /// Consumes a [`Block`] and returns its calculated hash
-    async fn store_block(block: Block) -> Result<String> {
+    async fn store_block(&self, block: Block) -> Result<String> {
+        let block_data = self.persistence.read_latest_block_data().await?;
+        println!("{:?}", block_data);
         todo!()
     }
 }
