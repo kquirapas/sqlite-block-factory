@@ -1,6 +1,6 @@
 # sqlite block factory
 
-![Block Factory Architecture Diagram](./github/block-factory-diagram.png)
+![Block Factory Architecture Diagram](.github/img/block-factory-diagram.png)
 
 - [x] Concurrent (with tokio)
 - [ ] Observable (with tracing)
