@@ -3,14 +3,16 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::time;
+use uuid::Uuid;
 
-use crate::persistence::{BlockData, NodePersistency, Persistence};
+use crate::persistence::{BlockData, NodePersistency, Persistence, TransactionData};
+use crate::utils::get_random_nonce;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Transaction {
     pub from: String,
     pub to: String,
-    #[serde(with = "serde_bytes")]
+    // #[serde(with = "serde_bytes")]
     pub instruction: Vec<u8>,
 }
 
@@ -36,28 +38,6 @@ impl Block {
         }
     }
 }
-
-// Block to BlockData conversion
-// impl TryFrom<Block> for BlockData {
-//     type Error =  &'static str;
-//
-//     // [kristian] TODO: finish try_from conversion from [`Block`] to `BlockData`]
-//     fn try_from(block: Block) -> Result<Self, Self::Error> {
-//         let uuid = Uuid::new_v4();
-//
-//         let unix_timestamp = SystemTime::now().duration_since(UNIX_EPOCH).into()?;
-//
-//         let block_hash =
-//
-//         Ok(BlockData {
-//             uuid: uuid.to_string(),
-//             hash: "".to_string(),
-//             timestamp: unix_timestamp,
-//             nonce: 0,
-//             prev_block_hash:
-//         })
-//     }
-// }
 
 pub struct Chain {
     pub tx_pool: Arc<Mutex<Vec<Transaction>>>,
@@ -93,10 +73,10 @@ impl Node {
         })
     }
 
-    pub async fn create_genesis(&self) -> Result<BlockData> {
-        let block_data = Block::get_genesis();
-        self.persistence.create_block_data(block_data)
-    }
+    // pub async fn create_genesis(&self) -> Result<BlockData> {
+    //     let block_data = Block::get_genesis();
+    //     self.persistence.create_block_data(block_data)
+    // }
 
     // chain runner
     pub async fn run(&self, chain: &Chain, block_time: u32) -> Result<()> {
@@ -109,7 +89,7 @@ impl Node {
             println!("End of block epoch. Processing...");
 
             {
-                // limit lock to smallet possible block scope
+                // limit lock to smallest possible block scope
                 let pool_size = pool.lock().await.len();
                 if pool_size == 0 {
                     println!("No transaction in pool. Skipping...");
@@ -130,14 +110,47 @@ impl Node {
 
     //----- PRIVATE -----
     /// Consumes a [`Block`] and returns its calculated hash
-    async fn prev_block_hash() -> Result<String> {
-        todo!()
+    async fn prev_block_hash(&self) -> Result<String> {
+        // retrieve latest block_data
+        let latest_block_data = self.persistence.read_latest_block_data().await?;
+        let prev_block_hash = latest_block_data.prev_block_hash;
+
+        Ok(prev_block_hash)
     }
 
     /// Consumes a [`Block`] and returns its calculated hash
-    async fn store_block(&self, block: Block) -> Result<String> {
-        let block_data = self.persistence.read_latest_block_data().await?;
-        println!("{:?}", block_data);
-        todo!()
+    async fn store_block(&self, block: Block) -> Result<()> {
+        let tx = self.persistence.pool.begin().await?;
+
+        // retrieve latest block_data
+        let latest_block_data = self.persistence.read_latest_block_data().await?;
+
+        // create block_data
+        let uuid = Uuid::now_v7().to_string();
+        let nonce = get_random_nonce();
+        let height = latest_block_data.height;
+        let prev_block_hash = latest_block_data.prev_block_hash;
+
+        // calculate hash
+        let hash = BlockData::get_sha256_hash(&uuid, &nonce, &height, &prev_block_hash);
+
+        let block_data = BlockData {
+            hash,
+            uuid,
+            nonce,
+            height,
+            prev_block_hash,
+        };
+
+        // store BlockData
+        self.persistence.store_block_data(block_data).await?;
+
+        // store transactions
+        for t in block.transactions.into_iter() {
+            let tx_data = TransactionData::try_from(t)?;
+            self.persistence.store_transaction_data(tx_data).await?;
+        }
+
+        Ok(tx.commit().await?)
     }
 }

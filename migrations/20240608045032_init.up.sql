@@ -10,9 +10,11 @@ create table block_data (
 
 create table transaction_data (
 	id varchar(48) not null,
+	block_id varchar(48) not null
 	hash varchar(32) not null unique,
 	from_address varchar(32) not null,
 	to_address varchar(32) not null,
 	instruction varchar(32) not null, 
 	primary key (id)
+	foreign key (block_id)
 );

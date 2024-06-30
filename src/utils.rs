@@ -40,4 +40,6 @@ pub fn get_unix_timestamp_now() -> Result<u64> {
     Ok(unix_timestamp)
 }
 
-// pub fn get_random_nonce()
+pub fn get_random_nonce() -> u32 {
+    todo!()
+}

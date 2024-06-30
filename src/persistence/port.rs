@@ -1,23 +1,43 @@
 use anyhow::{bail, Result};
 use sha256::digest;
 use sqlx::{Pool, Row, Sqlite, SqlitePool};
-use std::env;
+use std::{env, str};
 use uuid::Uuid;
-// use tokio::time;
 
-use crate::blockchain::Block;
+use crate::blockchain::Transaction;
 use crate::error::BlockFactoryError;
-use crate::utils::get_unix_timestamp_now;
 
 //----- MODELS -----
-
-pub struct TransactionData<'a> {
+//
+pub struct TransactionData {
     // uuidv7 with timestamp
     pub uuid: String,
     pub hash: String,
     pub from: String,
     pub to: String,
-    pub instruction: &'a [u8],
+    pub instruction: Vec<u8>,
+}
+
+impl TryFrom<Transaction> for TransactionData {
+    type Error = anyhow::Error;
+
+    fn try_from(tx: Transaction) -> Result<Self> {
+        let uuid = Uuid::now_v7().to_string();
+        let from = tx.from;
+        let to = tx.to;
+        let instruction = tx.instruction.clone();
+        let instr_string = str::from_utf8(&tx.instruction[..])?.to_string();
+        // generate hash
+        let hash = digest(format!("{uuid}{from}{to}{instr_string}"));
+
+        Ok(TransactionData {
+            hash,
+            uuid,
+            from,
+            to,
+            instruction,
+        })
+    }
 }
 
 #[derive(Debug, sqlx::FromRow)]
@@ -31,25 +51,25 @@ pub struct BlockData {
 }
 
 impl BlockData {
-    fn get_sha256_hash(uuid: String, nonce: u32, height: u32, prev_block_hash: String) -> String {
-        digest(format!("{uuid}{nonce}{height}{prev_block_hash}"))
+    pub fn get_sha256_hash(
+        uuid: &String,
+        nonce: &u32,
+        height: &u32,
+        prev_block_hash: &String,
+    ) -> String {
+        digest(format!(
+            "{}{}{}{}",
+            *uuid, *nonce, *height, *prev_block_hash
+        ))
     }
 }
-
-// convert Block into BlockData with automated necessary values
-// impl From<Block> for BlockData {
-//     fn from() -> BlockData {
-//         let uuid = Uuid::now_v7();
-//         BlockData {}
-//     }
-// }
 
 // TODO: Make this support multiple DB services
 /// Manages and maintains persistence data
 /// and operations
 pub struct Persistence {
     // only SQLite for now
-    pool: SqlitePool,
+    pub pool: Pool<Sqlite>,
 }
 
 impl Persistence {
@@ -96,7 +116,9 @@ pub trait NodePersistency {
     /// Store [`BlockData`] into local DB
     async fn read_latest_block_data(&self) -> Result<BlockData>;
     /// Store [`BlockData`] into local DB
-    async fn create_block_data(&self, block_data: BlockData) -> Result<()>;
+    async fn store_block_data(&self, block_data: BlockData) -> Result<()>;
+    /// Store [`TransactionData`] into local DB
+    async fn store_transaction_data(&self, tx_data: TransactionData) -> Result<()>;
 }
 
 impl NodePersistency for Persistence {
@@ -112,7 +134,7 @@ impl NodePersistency for Persistence {
         }
     }
 
-    async fn create_block_data(&self, block_data: BlockData) -> Result<()> {
+    async fn store_block_data(&self, block_data: BlockData) -> Result<()> {
         sqlx::query(
             "INSERT INTO block_data (id, hash, block_timestamp, height, prev_block_hash, nonce) VALUES ($1, $2, $3, $4, $5, $6)",
         )
@@ -121,6 +143,21 @@ impl NodePersistency for Persistence {
         .bind(block_data.height)
         .bind(block_data.prev_block_hash)
         .bind(block_data.nonce)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    async fn store_transaction_data(&self, tx_data: TransactionData) -> Result<()> {
+        sqlx::query(
+            "INSERT INTO transaction_data (id, hash, from, to, instruction) VALUES ($1, $2, $3, $4, $5)",
+        )
+        .bind(tx_data.uuid)
+        .bind(tx_data.hash)
+        .bind(tx_data.from)
+        .bind(tx_data.to)
+        .bind(tx_data.instruction)
         .execute(&self.pool)
         .await?;
 
