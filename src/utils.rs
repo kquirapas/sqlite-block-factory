@@ -1,5 +1,6 @@
 use anyhow::Result;
 use comfy_table::{presets::UTF8_FULL, *};
+use rand::Rng;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::config::Mode;
@@ -40,6 +41,8 @@ pub fn get_unix_timestamp_now() -> Result<u64> {
     Ok(unix_timestamp)
 }
 
-pub fn get_random_nonce() -> u32 {
-    todo!()
+pub fn get_random_nonce(upper_limit: u32) -> u32 {
+    let mut rng = rand::thread_rng();
+    let nonce: u32 = rng.gen_range(0..upper_limit);
+    nonce
 }

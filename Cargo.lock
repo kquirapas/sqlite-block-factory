@@ -311,6 +311,7 @@ dependencies = [
  "dotenvy",
  "features",
  "r2d2",
+ "rand",
  "serde",
  "serde_bytes",
  "serde_json",

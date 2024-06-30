@@ -69,11 +69,17 @@ async fn main() -> Result<()> {
     let config = Arc::clone(&shared_config);
     let chain_handle = tokio::spawn(async move {
         println!("Spawning node runner...");
+
         // get ownership of BLOCK TIME
         let owned_block_time = block_time.to_owned();
+
         // run the node
         let config = config;
         let node = Node::new().await?;
+
+        // create genesis block
+        node.store_genesis_block().await?;
+
         node.run(&config.chain, owned_block_time).await
     });
 

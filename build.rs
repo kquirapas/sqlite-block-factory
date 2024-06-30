@@ -11,6 +11,9 @@ fn main() -> Result<()> {
     dotenvy::dotenv()?;
     let db_folder = env::var("DATABASE_FOLDER")?;
     let db_name = env::var("DATABASE_NAME")?;
+
+    // TODO:delete if folder exists already
+
     // create DB folder in root if it doesn't yet exist
     if let Err(err) = create_dir(&db_folder) {
         if err.kind() != ErrorKind::AlreadyExists {
