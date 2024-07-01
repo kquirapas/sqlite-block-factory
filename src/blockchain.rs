@@ -5,7 +5,11 @@ use tokio::sync::Mutex;
 use tokio::time;
 use uuid::Uuid;
 
-use crate::persistence::{BlockData, NodePersistency, Persistence, TransactionData};
+use crate::persistence::{
+    models::{BlockData, TransactionData},
+    sqlite::SqlitePersistence,
+    NodePersistency,
+};
 use crate::utils::get_random_nonce;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -60,13 +64,13 @@ impl Chain {
 }
 
 pub struct Node {
-    persistence: Persistence,
+    persistence: SqlitePersistence,
 }
 
 impl Node {
     pub async fn new() -> Result<Self> {
         Ok(Self {
-            persistence: Persistence::new().await?,
+            persistence: SqlitePersistence::from_env().await?,
         })
     }
 
