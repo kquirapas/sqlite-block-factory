@@ -27,16 +27,6 @@ impl Block {
             transactions: tx_pool,
         }
     }
-
-    pub fn get_genesis() -> Self {
-        Self {
-            transactions: vec![Transaction {
-                from: String::from("Foundation"),
-                to: String::from("Earth"),
-                instruction: "LET'S FUCKING GOOOO!!!!".as_bytes().to_vec(),
-            }],
-        }
-    }
 }
 
 pub struct Chain {
@@ -134,16 +124,6 @@ impl Node {
             self.store_block(block).await?;
         }
         // Ok(())
-    }
-
-    //----- PRIVATE -----
-    /// Consumes a [`Block`] and returns its calculated hash
-    async fn prev_block_hash(&self) -> Result<String> {
-        // retrieve latest block_data
-        let latest_block_data = self.persistence.read_latest_block_data().await?;
-        let prev_block_hash = latest_block_data.prev_block_hash;
-
-        Ok(prev_block_hash)
     }
 
     /// Consumes a [`Block`] and returns its calculated hash

@@ -73,8 +73,7 @@ impl Persistence {
     pub async fn new() -> Result<Self> {
         // load environmentt variables
         dotenvy::dotenv()?;
-        let db_folder = env::var("DATABASE_FOLDER")?;
-        let db_name = env::var("DATABASE_NAME")?;
+
         let db_url = env::var("DATABASE_URL")?;
 
         // [kristian] TODO: configure optimal connection pooling options

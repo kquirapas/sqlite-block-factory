@@ -1,9 +1,5 @@
-use anyhow::Result;
-use comfy_table::{presets::UTF8_FULL, *};
-use rand::Rng;
-use std::time::{SystemTime, UNIX_EPOCH};
-
 use crate::config::Mode;
+use comfy_table::{presets::UTF8_FULL, *};
 
 pub fn display_configuration(port: &u32, block_time: &u32, mode: &Mode) {
     // display configuration from flags
@@ -33,16 +29,4 @@ pub fn display_configuration(port: &u32, block_time: &u32, mode: &Mode) {
     ]);
 
     println!("{table}");
-}
-
-pub fn get_unix_timestamp_now() -> Result<u64> {
-    let duration = SystemTime::now().duration_since(UNIX_EPOCH)?;
-    let unix_timestamp = duration.as_secs();
-    Ok(unix_timestamp)
-}
-
-pub fn get_random_nonce(upper_limit: u32) -> u32 {
-    let mut rng = rand::thread_rng();
-    let nonce: u32 = rng.gen_range(0..upper_limit);
-    nonce
 }
