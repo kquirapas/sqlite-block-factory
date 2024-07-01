@@ -9,6 +9,7 @@ use axum::{
     Router,
 };
 
+// found in templates/ at project root
 #[derive(Template)]
 #[template(path = "index.html")]
 struct IndexTemplate {}
