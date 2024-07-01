@@ -1,12 +1,9 @@
 use anyhow::Result;
 use axum::Router;
-use clap::{
-    builder::{EnumValueParser, RangedU64ValueParser},
-    Arg, Command,
-};
 use std::sync::Arc;
 
 mod blockchain;
+mod cli;
 mod config;
 mod error;
 mod persistence;
@@ -15,39 +12,14 @@ mod service;
 mod utils;
 
 use blockchain::{Chain, Node};
+use cli::Cli;
 use config::{Configuration, Mode};
 use router::{api, ui};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let matches = Command::new("block-factory")
-        .version("0.1.0")
-        .about("Generate blocks from incoming transactions")
-        .arg(
-            Arg::new("PORT")
-                .help("Port to use in serving the factory")
-                .long("port")
-                .short('p')
-                .value_parser(RangedU64ValueParser::<u32>::new().range(1..))
-                .default_value("8080"),
-        )
-        .arg(
-            Arg::new("BLOCKTIME")
-                .help("Amount of seconds to wait before creating a block")
-                .long("block-time")
-                .short('b')
-                .value_parser(RangedU64ValueParser::<u32>::new().range(1..))
-                .default_value("1"),
-        )
-        .arg(
-            Arg::new("MODE")
-                .help("Mode for block factory")
-                .long("mode")
-                .short('m')
-                .value_parser(EnumValueParser::<Mode>::new())
-                .default_value("full"),
-        )
-        .get_matches();
+    // get CLI matches
+    let matches = Cli::get_matches();
 
     // parse arguments and flags
     let port = *matches.get_one::<u32>("PORT").unwrap();
