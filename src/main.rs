@@ -26,15 +26,18 @@ async fn main() -> Result<()> {
     let mode = matches.get_one::<Mode>("MODE").unwrap();
 
     // store in config struct
-    let shared_config = Arc::new(Configuration {
+    let config = Configuration {
         port: port.to_owned(),
         block_time: block_time.to_owned(),
         mode: mode.to_owned(),
         chain: Chain::new(),
-    });
+    };
 
     // display config with beautiful table
-    utils::display_configuration(&port, &block_time, mode);
+    utils::display_configuration(&config);
+
+    // create atomic refernce config for passing in across routes
+    let shared_config = Arc::new(config);
 
     // run the Chain in a task with Node runner
     let config = Arc::clone(&shared_config);
