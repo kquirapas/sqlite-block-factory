@@ -8,13 +8,12 @@ mod config;
 mod error;
 mod persistence;
 mod router;
-mod service;
 mod utils;
 
 use blockchain::{Chain, Node};
 use cli::Cli;
 use config::{Configuration, Mode};
-use router::{api, ui};
+use router::{api, asset, ui};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -58,7 +57,7 @@ async fn main() -> Result<()> {
     // get routes and merge under one App route
     let app = Router::new()
         // route /assets (serve static files from /assets)
-        .merge(service::service()?)
+        .merge(asset::router()?)
         // route /api/
         .merge(api::router(shared_config.clone())?)
         // route / (for rendering templates)

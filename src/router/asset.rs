@@ -3,7 +3,7 @@ use axum::Router;
 use std::env;
 use tower_http::services::ServeDir;
 
-pub fn service() -> Result<Router> {
+pub fn router() -> Result<Router> {
     let assets_route = Router::new();
 
     let current_dir = env::current_dir()?;
